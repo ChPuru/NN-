@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<!--
+  Phase 0 draw-a-digit demo.
+
+  Runs from file:// with no server, no CDN, no build step. Three files:
+    model.js  the trained weights, as `const MODEL = {...}`
+    app.js    preprocessing + the forward pass, by hand
+    this file the UI
+
+  fetch() is blocked on file:// in Chrome and Firefox (opaque origin, so a
+  sibling file is cross-origin and CORS refuses it). A <script src> tag is not,
+  which is the only reason the weights arrive as JS instead of JSON.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scratchgrad phase 0 - draw a digit</title>
+<style>
+  :root {
+    --bg: #0a0d13;
+    --panel: #131924;
+    --panel-2: #1a2231;
+    --line: #26303f;
+    --ink: #e8edf5;
+    --muted: #8b98ad;
+    --accent: #5eead4;
+    --accent-dim: #2b7a70;
+    --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    padding: 28px 20px 56px;
+    background-image: radial-gradient(1000px 520px at 50% -12%, #16202f 0%, var(--bg) 62%);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header { margin-bottom: 26px; }
+  h1 {
+    margin: 0 0 6px;
+    font-size: clamp(24px, 4.2vw, 34px);
+    letter-spacing: -0.02em;
+    font-weight: 650;
+  }
+  h1 .dot { color: var(--accent); }
+  .sub { margin: 0; color: var(--muted); max-width: 62ch; }
+  .sub code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    color: #b9c6d8;
+    background: var(--panel-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* The drawing surface. touch-action:none is what stops a stylus or finger
+     from scrolling the page instead of drawing on it. */
+  #pad {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    aspect-ratio: 1 / 1;
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  button {
+    font: inherit;
+    font-weight: 550;
+    color: var(--ink);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button:hover { background: #222d3f; border-color: #35455a; }
+  button:active { transform: translateY(1px); }
+  .hint { color: var(--muted); font-size: 13px; }
+
+  /* probability bars */
+  .bars { display: grid; gap: 5px; }
+  .bar {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) 52px;
+    gap: 10px;
+    align-items: center;
+  }
+  .bar .digit {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px;
+    color: var(--muted);
+    text-align: center;
+    transition: color 0.15s;
+  }
+  .bar .track {
+    height: 16px;
+    background: var(--panel-2);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .bar .fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-dim);
+    border-radius: 5px;
+    transition: width 0.1s linear, background 0.15s;
+  }
+  .bar .pct {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .bar.top .digit { color: var(--accent); font-weight: 700; }
+  .bar.top .fill { background: var(--accent); }
+  .bar.top .pct { color: var(--accent); }
+
+  /* the 28x28 the net actually sees */
+  .peek { display: flex; gap: 16px; align-items: flex-start; }
+  #preview {
+    width: 140px;
+    height: 140px;
+    flex: none;
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    /* nearest-neighbour: the viewer is meant to see the 784 pixels, not a
+       browser's idea of a pleasant blur over them. */
+    image-rendering: pixelated;
+  }
+  .peek dl { margin: 0; font-size: 13px; color: var(--muted); }
+  .peek dt { color: #a9b6c9; margin-top: 8px; font-weight: 550; }
+  .peek dt:first-child { margin-top: 0; }
+  .peek dd {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  #alert { color: var(--warn); font-size: 13px; margin-top: 10px; min-height: 1.2em; }
+
+  footer {
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    max-width: 78ch;
+  }
+  footer b { color: #b9c6d8; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>draw a digit<span class="dot">.</span></h1>
+    <p class="sub">
+      A 784&rarr;128&rarr;10 MLP trained in <code>phase0/train.py</code> with NumPy and
+      hand-written gradients. This page reproduces the forward pass in about forty lines of
+      plain JavaScript &mdash; no framework, no CDN, no server.
+      <span id="meta"></span>
+    </p>
+  </header>
+
+  <div class="grid">
+
+    <section class="card">
+      <h2>canvas</h2>
+      <canvas id="pad" width="336" height="336"></canvas>
+      <div class="row">
+        <button id="clear" type="button">Clear</button>
+        <span class="hint">draw big, roughly centred &mdash; mouse, finger or stylus</span>
+      </div>
+      <div id="alert" role="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>probabilities</h2>
+      <div class="bars" id="bars"></div>
+    </section>
+
+    <section class="card" style="grid-column: 1 / -1;">
+      <h2>what the network actually sees</h2>
+      <div class="peek">
+        <canvas id="preview" width="28" height="28"></canvas>
+        <dl>
+          <dt>preprocessing</dt>
+          <dd id="steps">-</dd>
+          <dt>input mean (MNIST is about 0.13)</dt>
+          <dd id="meanline">-</dd>
+          <dt>prediction</dt>
+          <dd id="verdict">-</dd>
+        </dl>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <p>
+      <b>Why the preprocessing is the whole demo.</b> MNIST digits were size-normalised into a
+      20&times;20 box and then centred in a 28&times;28 field <em>by their centre of mass</em>.
+      Feed a raw canvas scrape to a genuinely 98%-accurate model and it drops to roughly 25%:
+      the model never saw a digit at that scale or offset, and it has no translation invariance
+      to fall back on. <code>mnistify()</code> in <code>app.js</code> reproduces the original
+      pipeline step for step.
+    </p>
+    <p>
+      <b>Where a plain MLP stops.</b> 97.5&ndash;98.2% on the test set is the ceiling here.
+      A small convolutional net reaches 99.2%+, because a convolution knows a stroke means the
+      same thing wherever it lands; this model has to learn that fact 784 separate times.
+    </p>
+  </footer>
+
+</div>
+
+<script src="model.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

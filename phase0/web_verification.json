@@ -1,0 +1,24 @@
+{
+  "n": 300,
+  "seed": 0,
+  "node": "v24.16.0",
+  "pad": 336,
+  "agreement_js_pipeline_vs_numpy": 0.9866666666666667,
+  "agreement_without_mnistify": 0.20666666666666667,
+  "accuracy_with_mnistify": 0.98,
+  "accuracy_without_mnistify": 0.20333333333333334,
+  "forward_argmax_agreement_same_inputs": 1.0,
+  "numpy_accuracy_on_clean_rows": 0.98,
+  "median_abs_pixel_reconstruction_error": 0.03320077955452734,
+  "p95_abs_pixel_reconstruction_error": 0.06766956795902199,
+  "max_long_side_error_px": 0,
+  "max_paste_offset_error_px": 0,
+  "max_centre_of_mass_error_px": 0.4973881531593207,
+  "heaviest_fed_tensor_mean": 0.26050420385269846,
+  "traps": {
+    "weights arrive via <script src>, not fetch": true,
+    "canvas coords use getBoundingClientRect() scaled by width/rect.width": true,
+    "polarity is white ink on black, with an assertion on the fed mean": true
+  },
+  "node_exit_code": 0
+}

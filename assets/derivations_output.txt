@@ -1,0 +1,199 @@
+$ PYTHONPATH=src python notes/derivations/verify/run_all.py
+# 2026-09-26, Windows 11 laptop (Intel64 Family 6 Model 183), Python 3.12.11, NumPy 2.5.3, torch not installed
+
+
+=== 01-backprop-basics ===
+  [ok  ] unbroadcast_adjoint        4.17608e-16 <= 1e-15       <v, broadcast(u)> == <unbroadcast(v), u>, 5 shape pairs
+  [ok  ] chain_dx                             0 <= 1e-14       hand-composed VJP vs backward(), d/dx
+  [ok  ] chain_dW1                            0 <= 1e-14       hand-composed VJP vs backward(), d/dW1
+  [ok  ] accumulate_two_uses          3.717e-17 <= 1e-15       a leaf in two branches gets 1 + 2x, not 2x
+  [ok  ] reverse_vs_forward_ratio       60.4136 >= 10          n=205 directional passes / 1 backward (0.06 ms)
+  [ok  ] reverse_matches_forward    1.18209e-10 <= 1e-09       and the two agree, so the cheap one is not cheating
+  6/6 passed
+
+=== 02-softmax-cross-entropy ===
+  [ok  ] forward_is_logsumexp                 0 <= 1e-15       loss == mean(logsumexp(z) - z_y)
+  [ok  ] dz_mean                              0 <= 1e-15       framework grad == (p - onehot)/N
+  [ok  ] dz_sum                               0 <= 1e-15       reduction='sum' drops the 1/N
+  [ok  ] dz_label_smoothing                   0 <= 1e-15       == (p - q)/N, q smoothed
+  [ok  ] finite_differences         2.69157e-11 <= 1e-09       and the closed form survives central differences
+  [ok  ] clipped_loss_capped             27.631 == 27.63       -log(p+1e-12) reports 27.6310 for a true loss of 60.0
+  [ok  ] clipped_grad_is_zero                 0 <= 1e-13       prefactor p_y/(p_y+eps) = 8.757e-15
+  [ok  ] stable_grad_is_minus_one   3.17414e-10 <= 1e-09       the stable form still says 'raise this logit', at full strength
+  8/8 passed
+
+=== 03-layernorm ===
+  [ok  ] collapse_to_three_terms     1.17411e-16 <= 1e-14       dmu/dv chain == istd*(dxhat - mean - xhat*mean(dxhat*xhat))
+  [ok  ] forward_matches                       0 <= 1e-15       biased var, eps inside the sqrt
+  [ok  ] dx_vs_framework             3.07401e-17 <= 1e-14       three-term dx == fused backward
+  [ok  ] dg_vs_framework                       0 <= 1e-15       dg == sum_n dy * xhat
+  [ok  ] db_vs_framework                       0 <= 1e-15       db == sum_n dy
+  [ok  ] finite_differences          3.93151e-11 <= 1e-07       check_module over x, weight and bias, independent input stream
+  [ok  ] stationary_point_trap       1.33002e-05 >= 1e-07       same stream for x and the cotangent: <x, norm(x)> is stationary
+  [ok  ] annotated_transformer_gap      0.188195 >= 0.001       max |ours - theirs| on the same input; Bessel factor 1.0488
+  8/8 passed
+
+=== 04-batchnorm ===
+  [ok  ] forward_uses_biased_var                   0 <= 1e-15       train-mode output == (x - mu)/sqrt(var_biased + eps) * g + b
+  [ok  ] dx_vs_framework                 8.43358e-17 <= 1e-14       three-term dx over axes (0,2,3)
+  [ok  ] dg_vs_framework                           0 <= 1e-15       dg == sum over (N,H,W) of dy*xhat
+  [ok  ] db_vs_framework                           0 <= 1e-15       db == sum over (N,H,W) of dy
+  [ok  ] finite_differences              9.34436e-11 <= 1e-07       check_module through the batch-statistics path
+  [ok  ] running_var_is_unbiased         4.23356e-17 <= 1e-15       running_var == var(x, ddof=1) after one momentum=1 step
+  [ok  ] running_var_is_not_biased         0.0666667 >= 0.001       and differs from the biased estimator by 14.3% at n=8
+  [ok  ] frozen_stats_backward_differs      0.097329 >= 0.01        dxhat*istd is a different gradient; it still descends, which is the trap
+  8/8 passed
+
+=== 05-conv2d ===
+  [ok  ] output_size_formula                    0 == 0           mismatches over 81 (k, stride, pad, dilation) geometries
+  [ok  ] im2col_vs_naive_loops        1.76401e-16 <= 1e-14       forward-value check against six explicit loops
+  [ok  ] dW_is_dY_dot_col             1.93511e-16 <= 1e-14       dW = dY . col^T, reshaped
+  [ok  ] dX_is_col2im                           0 <= 1e-14       dX = col2im(W^T . dY)
+  [ok  ] db_sums_spatial                        0 <= 1e-15       db = sum over (N, H_out, W_out)
+  [ok  ] col2im_accumulates           7.44466e-17 <= 1e-15       col2im(im2col(x)) == x * count (max count 9 at k=3,s=1,p=1)
+  [ok  ] overwrite_version_is_wrong           0.8 >= 0.01        fancy assignment keeps the last write; this is how far off that is
+  [ok  ] adjoint_identity             1.47046e-15 <= 1e-12       <v, Au> == <A^T v, u>, no step size involved
+  [ok  ] finite_differences           5.18988e-11 <= 1e-07       check_module on Conv2d with stride 2, pad 1, dilation 2
+  9/9 passed
+
+=== 06-lstm ===
+  [ok  ] forward_values                4.29854e-17 <= 1e-15       c' = f*c + i*g, h' = o*tanh(c')
+  [ok  ] dx                             9.2018e-17 <= 1e-14       dz @ W_ih^T
+  [ok  ] dh_prev                       6.93374e-17 <= 1e-14       dz @ W_hh^T
+  [ok  ] dc_prev                       1.41511e-17 <= 1e-15       dc * f -- the carousel, one step
+  [ok  ] dW_ih                         8.15733e-17 <= 1e-14       x^T dz
+  [ok  ] dW_hh                         1.02479e-16 <= 1e-14       h^T dz
+  [ok  ] db                            1.55286e-16 <= 1e-15       dz summed over the batch
+  [ok  ] carousel_is_prod_f            6.97362e-17 <= 1e-14       W_hh = 0, 12 steps: dc_0 == (prod_t f_t) * dc_12
+  [ok  ] carousel_open_gate_survives      0.764113 >= 0.5         b_f=5, 40 steps: |dc_0| / |dc_40| -- the gradient is still there
+  [ok  ] carousel_half_gate_vanishes   8.93659e-13 <= 1e-09       b_f=0, same 40 steps: 8.94e-13. The cell is not magic
+  [ok  ] tanh_rnn_vanishes             6.37476e-05 <= 0.01        and a tanh RNN gets 6.37e-05 with no say in the matter
+  [ok  ] truncation_is_exact                     0 <= 1e-15       detach at t=4 == rebuilding the graph from a constant state
+  [ok  ] truncation_is_not_full_bptt     0.0604954 >= 0.001       and the discarded 4 steps were carrying real gradient
+  [ok  ] finite_differences              9.586e-11 <= 1e-07       check_module through 6 unrolled steps of nn.LSTM
+  14/14 passed
+
+=== 07-attention ===
+  [ok  ] softmax_jacobian_collapse     9.01004e-17 <= 1e-15       dense (diag(a) - a a^T) da == a*(da - sum(da*a))
+  [ok  ] forward_value                           0 <= 1e-15       out == softmax(qk^T/sqrt(d)) v
+  [ok  ] weights_match                           0 <= 1e-15       returned weights == our softmax
+  [ok  ] dQ                                      0 <= 1e-14       dS . K, with dS the collapsed softmax VJP
+  [ok  ] dK                                      0 <= 1e-14       dS^T . Q
+  [ok  ] dV                                      0 <= 1e-15       A^T . dOut
+  [ok  ] dQ_causal                               0 <= 1e-14       same, with the causal mask applied
+  [ok  ] dK_causal                               0 <= 1e-14       and dS zeroed outside the mask
+  [ok  ] finite_differences            8.53063e-11 <= 1e-07       gradcheck on the fused sdpa node
+  [ok  ] dot_variance_is_d_64             0.998401 <= 1.05        Var(q.k) = 63.90 at d=64 (theory: 64)
+  [ok  ] scaled_variance_is_one_64      0.00159864 <= 0.05        Var(q.k/sqrt(d)) = 0.998 at d=64
+  [ok  ] scaled_variance_is_one_11      0.00576325 <= 0.05        and 1.006 at d=11 -- the scale is d-independent
+  [ok  ] unscaled_softmax_saturates       0.850676 >= 0.8         mean max weight 0.851 unscaled vs 0.103 scaled (d=128)
+  [ok  ] unscaled_jacobian_collapses       4.48471 >= 3           mean trace(J): 0.2145 unscaled vs 0.9622 scaled
+  [ok  ] neg_inf_makes_nan                       4 == 4           all four entries of a fully-masked row are NaN
+  [ok  ] isfinite_guard_still_nan                4 == 4           the popular max-guard patch does not fix it: 0/0
+  [ok  ] finite_sentinel_is_uniform              0 <= 1e-15       finfo.min/2 gives a finite uniform 1/S row instead
+  17/17 passed
+
+=== 08-adam ===
+  [ok  ] m_closed_form               7.93016e-17 <= 1e-15       m_t == (1 - b1^t) g over 10 steps
+  [ok  ] v_closed_form               5.31038e-17 <= 1e-15       v_t == (1 - b2^t) g^2 over 10 steps
+  [ok  ] unbiased_in_expectation      0.00101022 <= 0.005       E[m_5]/(1 - b1^5) == E[g], 200k i.i.d. draws
+  [ok  ] framework_matches_hand                0 <= 1e-15       optim.Adam's first step == lr * m_hat/(sqrt(v_hat)+eps)
+  [ok  ] first_step_is_lr             9.9999e-06 <= 0.0001      |step| = lr for g in 1e-3, 1, 1e3: 0.999990, 1.000000, 1.000000
+  [ok  ] no_correction_is_3_16x      3.06228e-07 <= 1e-06       measured 3.16228 vs (1-b1)/sqrt(1-b2)=3.16228; the numerator is 10x too small too
+  [ok  ] m_only_is_31_6x             3.06228e-07 <= 1e-06       measured 31.6228 vs 1/sqrt(1-b2)=31.6228 -- THIS is the explosive mistake
+  [ok  ] v_only_is_0_1x              4.44089e-16 <= 1e-06       measured 0.100000 vs (1-b1)=0.1 -- ten times too small, and it merely stalls
+  [ok  ] eps_inside_floors_small_g     0.0996032 <= 0.2         at |g|=1e-5, m_hat/sqrt(v_hat+eps) steps 9.950e-05 vs 9.990e-04
+  [ok  ] eps_inside_ok_at_large_g          5e-09 <= 1e-07       at |g|=1 both agree to 1e-8, which is why the bug survives review
+  10/10 passed
+
+=== 09-gradient-checking ===
+  [ok  ] forward_slope_is_1                0.00342791 <= 0.05        log-log slope 1.003 in the truncation regime
+  [ok  ] central_slope_is_2                0.00025702 <= 0.05        log-log slope 2.000: O(h^2), the whole reason to pay 2x
+  [ok  ] forward_optimum_near_sqrt_eps      0.0767799 <= 0.75        best h 1.78e-08 vs sqrt(eps)=1.49e-08
+  [ok  ] central_optimum_near_cbrt_eps       0.532147 <= 0.75        best h 1.78e-06 vs eps^(1/3)=6.06e-06
+  [ok  ] central_beats_forward                 1188.8 >= 100         best errors 6.86e-09 vs 5.77e-12
+  [ok  ] h_1e5_is_near_optimal                6.93349 <= 10          h_rel=1e-5 costs 6.93x the best attainable error
+  [ok  ] per_element_metric_fails         4.44483e-05 >= 1e-09       a correct 1e-6 entry scores 4.44e-05 per-element (floor 9.8e-10)
+  [ok  ] array_scale_metric_passes        7.81408e-11 <= 1e-09       the same numbers, normalised by the array scale
+  [ok  ] ones_cotangent_hides_transpose             0 <= 1e-14       a wrong-way backward at (7,7) passes at machine precision
+  [ok  ] random_cotangent_catches_it         0.593369 >= 0.1         and fails outright once the cotangent is Gaussian
+  [ok  ] float32_has_no_power              0.00367137 >= 0.001       a CORRECT gradient scores 3.67e-03 in float32
+  [ok  ] float64_has_power                4.01295e-11 <= 1e-09       and 4.01e-11 in float64 -- six orders of resolution
+  [ok  ] adjoint_is_exact                           0 <= 1e-14       <v, Au> == <A^T v, u> for Linear; gradcheck manages 2.26e-11
+  13/13 passed
+
+=== 10-parallel-scan ===
+  [ok  ] scan_vs_loop                 4.62186e-17 <= 1e-14       T=13, a in (-1, 1), with h0
+  [ok  ] scan_vs_loop_T4096           8.84764e-17 <= 1e-13       float64, a in (0.3, 0.7)
+  [ok  ] closed_form_nonfinite           0.970133 >= 0.9         float32 cumprod form: first NaN at step 118 (float64: 972)
+  [ok  ] log_space_ok_if_positive     1.54941e-13 <= 1e-12       Heinsen form, b > 0
+  [ok  ] log_space_nan_if_signed         0.999227 >= 0.9         same form, signed b: fraction of NaN outputs
+  [ok  ] adjoint_is_reverse_scan      2.90202e-17 <= 1e-14       hand loop vs _scan_adjoint
+  [ok  ] grads_vs_framework           3.12519e-17 <= 1e-14       lam*h_prev, lam, a_1*lam_1
+  [ok  ] grads_vs_numeric             3.94441e-11 <= 1e-08       same formulas vs central diffs
+  [ok  ] wrong_shift_is_caught           0.558369 >= 0.01        carrying lam back by a_t instead of a_{t+1}
+  [ok  ] mingru_dpre                  1.09367e-16 <= 1e-14       dk = z(1-z)(lam h~ - da), dh~ = z lam
+  [ok  ] one_minus_sigmoid_17_f32               0 <= 0           1 - sigmoid(17) is exactly 0 in float32; sigmoid(-17) = 4.14e-08
+  [ok  ] zoh_decay_below_1                  0.999 <= 1           exp(delta A), delta in [1e-3, 100]
+  [ok  ] zoh_decay_nonneg                       0 >= 0           same grid
+  [ok  ] euler_decay_unstable                1599 >= 2           |1 + delta A| reaches 1599 on the same grid
+  [ok  ] bbar_error_is_half_delta_A    0.00332502 <= 0.01        |B_zoh - delta B| / (delta B) == delta|A|/2 to first order
+  [ok  ] selective_scan_gradcheck     3.57706e-11 <= 1e-09       x, delta, A, B, h0
+  16/16 passed
+
+=== 11-quantization ===
+  [ok  ] error_within_half_step             0.999997 <= 1           max|x - x_hat| / (s/2)
+  [ok  ] error_variance_s2_over_12        0.00128715 <= 0.02        var(e) / (s^2/12) = 1.0013 for a signal smooth on the grid
+  [ok  ] zero_exact_integer_zp                     0 <= 0           max|x_hat(0)| over 1000 ranges
+  [ok  ] zero_inexact_fractional_zp         0.247987 >= 0.1         mean|x_hat(0)|/s with an unrounded z (expected ~0.25)
+  [ok  ] ste_is_surrogate_derivative     1.63772e-11 <= 1e-09       STE vs FD of clip(x)
+  [ok  ] fd_of_round_is_zero                       1 >= 0.95        fraction of FD == 0
+  [ok  ] fd_across_jump_is_s_over_2h               0 <= 1e-06       FD straddling one jump = s/(2h), not 1
+  [ok  ] multiplier_rel_error            4.59814e-10 <= 4.657e-10   |M0 2^-shift - M| / M
+  [ok  ] requant_disagreement            0.000411538 <= 0.001       vs floor(acc M + b + 1/2)
+  [ok  ] requant_max_code_diff                     1 <= 1           never more than one code
+  [ok  ] ties_round_half_up                        0 <= 0           +-0.5 -> 1, 0 ; +-1.5 -> 2, -1
+  [ok  ] int8_matmul_wraps                      -112 == -112        [100,100]@[2,2]
+  [ok  ] int32_headroom_784x255x127          84.5804 >= 50          accumulator budget of an 8-bit 784-wide layer
+  [ok  ] textbook_bias_err_over_half_M        0.9999 >= 0.99        int32 bias on the acc grid: up to M/2 output codes (M ~ 11)
+  [ok  ] fixed_point_bias_err_codes      3.72519e-09 <= 1e-06       int64 bias on the 2^-shift grid
+  [ok  ] binary_alpha_is_mean_abs                  0 <= 1e-06       grid argmin vs mean|w|
+  [ok  ] integer_equals_sim_codes                  1 >= 0.999       W2A2 toy MLP
+  [ok  ] integer_vs_sim_max_diff                   0 <= 1           in logit codes
+  18/18 passed
+
+=== 12-parameter-shift ===
+  [ok  ] single_gate_is_sinusoid        5.55112e-16 <= 1e-13       max residual of A + B cos t + C sin t fitted to E(t) at 40 angles
+  [ok  ] shift_rule_exact_any_s         1.84575e-15 <= 1e-13       [E(t+s)-E(t-s)]/(2 sin s) vs fitted derivative, s in {0.1, 1, pi/2, 2.5}
+  [ok  ] pi2_as_central_diff_ratio                0 <= 1e-12       same two evaluations read as FD with h=pi/2: x0.636620 (= 2/pi)
+  [ok  ] framework_vs_central_diff      1.92066e-10 <= 1e-08       Circuit.jacobian vs central differences (h=1e-6), shared params + x
+  [ok  ] framework_nonvacuous              0.685602 >= 0.1         largest |dE/dtheta| in that check, so it cannot pass by being zero
+  [ok  ] shared_naive_is_zero           1.66533e-16 <= 1e-14       RY(t) RY(t): shifting t itself gives 0 for every t
+  [ok  ] shared_summed_exact              4.996e-16 <= 1e-14       per-occurrence sum == -2 sin 2t
+  [ok  ] full_angle_pi2_is_zero         1.66533e-16 <= 1e-14       exp(-i t Y): the pi/2 rule returns exactly 0
+  [ok  ] full_angle_pi4_exact           5.55112e-16 <= 1e-13       exp(-i t Y): shift pi/4, factor 1 is exact
+  [ok  ] controlled_ry_two_term_fails     0.0939418 >= 0.01        CRY: two-term pi/2 rule vs central differences
+  10/10 passed
+
+=== 13-vae ===
+  [ok  ] reparam_dmu                            0 <= 1e-15       dz/dmu == 1
+  [ok  ] reparam_dlogvar              2.79684e-17 <= 1e-15       dz/dlogvar == 0.5 (z - mu)
+  [ok  ] reparam_finite_diff          6.60566e-11 <= 1e-09       gradcheck with eps held fixed
+  [ok  ] kl_zero_at_prior                       0 == 0           mu = 0, logvar = 0
+  [ok  ] kl_grad_derived              8.86979e-17 <= 1e-15       mu and 0.5 (e^lv - 1)
+  [ok  ] kl_finite_diff                2.2132e-11 <= 1e-09       gradcheck of the fused KL op
+  [ok  ] kl_vs_monte_carlo                1.04934 <= 5           |closed - E_q[log q - log p]| in standard errors, 400k samples
+  [ok  ] estimators_unbiased              1.84349 <= 5           both estimators hit 2mu, in SEs
+  [ok  ] score_vs_pathwise_variance        7.4431 >= 5           predicted 30 / 4 = 7.5
+  [ok  ] naive_kl_float32_garbage         2.31918 >= 0.1         e^lv - 1 - lv
+  [ok  ] expm1_kl_float32              0.00177184 <= 0.01        expm1(lv) - lv at lv = 1e-4
+  [ok  ] mean_reduction_is_beta_D             784 == 784         sum / mean == D
+  [ok  ] elbo_finite_diff             3.28429e-10 <= 1e-07       whole -ELBO, every VAE parameter
+  13/13 passed
+
+150/150 checks passed across 13 derivations
+wrote notes\derivations\verify\results.json
+
+real	0m25.851s
+user	0m0.000s
+sys	0m0.030s

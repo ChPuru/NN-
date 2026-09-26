@@ -1,0 +1,95 @@
+$ PYTHONPATH=src python benchmarks/bench_vs_torch.py --quick --repeat 5 --json bench_quick.json
+# 2026-09-26, Windows 11 laptop (Intel64 Family 6 Model 183), Python 3.12.11, NumPy 2.5.3, torch not installed
+
+====================================================================================================
+scratchgrad vs PyTorch CPU -- honest benchmarks
+====================================================================================================
+python  3.12.11   numpy 2.5.3
+cpu     Intel64 Family 6 Model 183 Stepping 1, GenuineIntel
+os      Windows-11-10.0.26200-SP0
+blas    numpy pinned to 1 thread(s) via *_NUM_THREADS
+torch   NOT INSTALLED -- comparison columns will be blank
+median of 5 runs after 3 warmups; lower is better
+
+  benchmark                      ours med ours min torch med torch min    ratio
+  -------------------------------------------------------------------------------------------------
+
+Noise floor -- one identical 512x512 f32 matmul, timed many times:
+  n=30  min 2.35 ms   median 2.86 ms   max 4.00 ms
+  median/min 1.22x, max/min 1.71x  <-- read every ratio against this
+
+Raw matmul -- both sides call a single-threaded BLAS, so this is the floor:
+  matmul 256x256 f32                 0.29     0.28        --        --       --  same BLAS
+  matmul 1024x1024 f32              20.52    18.96        --        --       --  same BLAS
+
+CLAIM (a)  float32 vs float64 matmul
+  matmul 1024 f64   median    40.48 ms   min    39.93 ms
+  matmul 1024 f32   median    21.08 ms   min    20.44 ms
+  [CONFIRMED] float32 vs float64 matmul
+      claimed : ~1.5-2x, not the 7.5x a popular microbenchmark reports (that one is dominated by writing a 400 MB smaller output matrix)
+      measured: 1.95x on minima, 1.92x on medians (1024x1024 GEMM, 1 thread(s))
+  f64 -> f32 matmul                 21.08    20.44     40.48     39.93    0.52x  f32 is 1.95x faster
+
+CLAIM (b)  np.einsum optimize=
+  einsum optimize=False   median    11.44 ms   min    10.30 ms
+  einsum optimize=True    median     1.11 ms   min     1.06 ms
+  [DIFFERENT-ON-THIS-MACHINE] einsum optimize=True
+      claimed : the default optimize=False never dispatches to BLAS -- a 30-300x loss
+      measured: 9.7x on minima, 10.3x on medians ('nch,co->noh', x=(32,64,100) f32, w=(64,128) f32)
+  einsum optimize=True               1.11     1.06     11.44     10.30    0.10x  10x faster than default
+
+CLAIM (c)  NumPy per-call dispatch overhead
+  fixed cost of one np.multiply call (n=1, out= supplied): 0.325 us
+       chunk n     calls   ns/elem  measured     model
+         1,024     16384     0.873     40.7%     38.0%
+         2,048      8192     0.734     29.3%     23.4%
+         4,096      4096     0.608     14.7%     13.3%
+         8,192      2048     0.557      7.0%      7.1%
+        16,384      1024     0.575      9.8%      3.7%
+        32,768       512     0.521      0.5%      1.9%  <-- first measured row under 1%
+        65,536       256     0.514      0.0%      0.9%
+       131,072       128     0.568      8.7%      0.5%
+       262,144        64     0.536      3.3%      0.2%
+       524,288        32     0.538      3.6%      0.1%
+     1,048,576        16     0.523      0.9%      0.1%
+     2,097,152         8     0.524      1.1%      0.0%
+     4,194,304         4     0.518      0.0%      0.0%
+     8,388,608         2     0.568      8.8%      0.0%
+    16,777,216         1     0.526      1.4%      0.0%
+  fixed cost 0.325 us/call, bandwidth floor 0.518 ns/elem
+  1% crossing from the two measured constants: n = 99*c0/t_e = 62,105
+  [DIFFERENT-ON-THIS-MACHINE] NumPy per-call dispatch overhead
+      claimed : under 1% only above ~1e5-1e6 elements per call, not 1e4
+      measured: n = 99*c0/t_e = 62,105 elements from c0=0.325 us/call and t_e=0.518 ns/elem; at n=1e4 the model says 6% overhead, measured 8% at n=8,192; first measured row under 1% at n=32,768
+
+MLP 784-128-10, batch 128:
+  MLP forward                        0.26     0.25        --        --       --  
+  MLP fwd+bwd+step                   1.66     1.58        --        --       --  
+
+====================================================================================================
+Claim check
+====================================================================================================
+  [MEASURED] machine noise floor
+      claimed : n/a -- calibration, not a published claim
+      measured: median/min 1.22x, max/min 1.71x over 30 runs of a bit-identical 512x512 f32 matmul
+  [CONFIRMED] float32 vs float64 matmul
+      claimed : ~1.5-2x, not the 7.5x a popular microbenchmark reports (that one is dominated by writing a 400 MB smaller output matrix)
+      measured: 1.95x on minima, 1.92x on medians (1024x1024 GEMM, 1 thread(s))
+  [DIFFERENT-ON-THIS-MACHINE] einsum optimize=True
+      claimed : the default optimize=False never dispatches to BLAS -- a 30-300x loss
+      measured: 9.7x on minima, 10.3x on medians ('nch,co->noh', x=(32,64,100) f32, w=(64,128) f32)
+  [DIFFERENT-ON-THIS-MACHINE] NumPy per-call dispatch overhead
+      claimed : under 1% only above ~1e5-1e6 elements per call, not 1e4
+      measured: n = 99*c0/t_e = 62,105 elements from c0=0.325 us/call and t_e=0.518 ns/elem; at n=1e4 the model says 6% overhead, measured 8% at n=8,192; first measured row under 1% at n=32,768
+
+====================================================================================================
+Why we lose: no operator fusion, no threading inside our own code, a Python-level graph
+node per op, and an im2col convolution that materialises the patch matrix. Every
+elementwise op is a separate NumPy call with its own allocation and its own pass over
+memory; PyTorch fuses and reuses buffers. There is no GPU backend and none is claimed.
+====================================================================================================
+wrote bench_quick.json
+
+real	0m5.034s
+user	0m0.000s
+sys	0m0.000s

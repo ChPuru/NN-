@@ -1,0 +1,180 @@
+{
+  "env": {
+    "python": "3.13.5",
+    "numpy": "2.2.3",
+    "torch": "2.6.0+cpu",
+    "threads": 1,
+    "blas_threads": "1",
+    "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "args": {
+    "repeat": 7,
+    "warmup": 3,
+    "batch": 128,
+    "threads": 1,
+    "json": "benchmarks/results.json",
+    "quick": false
+  },
+  "results": [
+    {
+      "name": "matmul 256x256 f32",
+      "ours_ms": 0.5076999077573419,
+      "ours_min_ms": 0.4868000978603959,
+      "torch_ms": 0.4900998901575804,
+      "torch_min_ms": 0.4401999758556485,
+      "ratio": 1.0359110825225906,
+      "ratio_min": 1.105861255249202,
+      "is_model": false,
+      "note": "same BLAS"
+    },
+    {
+      "name": "matmul 1024x1024 f32",
+      "ours_ms": 42.691399925388396,
+      "ours_min_ms": 36.7734000319615,
+      "torch_ms": 37.72470005787909,
+      "torch_min_ms": 35.809700028039515,
+      "ratio": 1.1316564441834964,
+      "ratio_min": 1.0269117027835306,
+      "is_model": false,
+      "note": "same BLAS"
+    },
+    {
+      "name": "f64 -> f32 matmul",
+      "ours_ms": 42.96980006620288,
+      "ours_min_ms": 33.91809994354844,
+      "torch_ms": 81.56690001487732,
+      "torch_min_ms": 78.75970005989075,
+      "ratio": 0.5268043784717262,
+      "ratio_min": 0.43065298519111056,
+      "is_model": false,
+      "note": "f32 is 2.32x faster"
+    },
+    {
+      "name": "einsum optimize=True",
+      "ours_ms": 2.017799997702241,
+      "ours_min_ms": 1.9746000180020928,
+      "torch_ms": 76.14909997209907,
+      "torch_min_ms": 66.81620003655553,
+      "ratio": 0.02649801505784783,
+      "ratio_min": 0.029552713517407122,
+      "is_model": false,
+      "note": "34x faster than default"
+    },
+    {
+      "name": "MLP forward",
+      "ours_ms": 1.1795000173151493,
+      "ours_min_ms": 0.8403999963775277,
+      "torch_ms": 0.5085000302642584,
+      "torch_min_ms": 0.46300003305077553,
+      "ratio": 2.3195672509639462,
+      "ratio_min": 1.8151186531024808,
+      "is_model": true,
+      "note": ""
+    },
+    {
+      "name": "MLP fwd+bwd+step",
+      "ours_ms": 2.4289999855682254,
+      "ours_min_ms": 1.9772000377997756,
+      "torch_ms": 3.3048000186681747,
+      "torch_min_ms": 2.9501999961212277,
+      "ratio": 0.7349915189564498,
+      "ratio_min": 0.6701918650936537,
+      "is_model": true,
+      "note": ""
+    },
+    {
+      "name": "LeNet-5 forward",
+      "ours_ms": 52.486700005829334,
+      "ours_min_ms": 47.009100089780986,
+      "torch_ms": 15.056599979288876,
+      "torch_min_ms": 12.917599990032613,
+      "ratio": 3.4859596507861985,
+      "ratio_min": 3.6391512452819264,
+      "is_model": true,
+      "note": ""
+    },
+    {
+      "name": "LeNet-5 fwd+bwd+step",
+      "ours_ms": 125.18139998428524,
+      "ours_min_ms": 114.33389992453158,
+      "torch_ms": 37.6535999821499,
+      "torch_min_ms": 35.42980004567653,
+      "ratio": 3.3245532975234466,
+      "ratio_min": 3.227054620041065,
+      "is_model": true,
+      "note": ""
+    },
+    {
+      "name": "LSTM T=64 forward",
+      "ours_ms": 38.30150002613664,
+      "ours_min_ms": 38.16170000936836,
+      "torch_ms": 14.612299972213805,
+      "torch_min_ms": 12.488200096413493,
+      "ratio": 2.6211821615330453,
+      "ratio_min": 3.055820671893949,
+      "is_model": true,
+      "note": "vs fused kernel"
+    },
+    {
+      "name": "LSTM T=64 fwd+bwd",
+      "ours_ms": 112.83800005912781,
+      "ours_min_ms": 96.58889996353537,
+      "torch_ms": 46.15760000888258,
+      "torch_min_ms": 40.70470004808158,
+      "ratio": 2.444624504684239,
+      "ratio_min": 2.3729176200645563,
+      "is_model": true,
+      "note": ""
+    },
+    {
+      "name": "mini-GPT forward",
+      "ours_ms": 190.15629997011274,
+      "ours_min_ms": 179.43510005716234,
+      "torch_ms": null,
+      "torch_min_ms": null,
+      "ratio": null,
+      "ratio_min": null,
+      "is_model": false,
+      "note": "809,856 params"
+    },
+    {
+      "name": "mini-GPT fwd+bwd",
+      "ours_ms": 376.9466000376269,
+      "ours_min_ms": 351.96040000300854,
+      "torch_ms": null,
+      "torch_min_ms": null,
+      "ratio": null,
+      "ratio_min": null,
+      "is_model": false,
+      "note": "~11.7 min for 2000 iters"
+    }
+  ],
+  "claims": [
+    {
+      "name": "machine noise floor",
+      "claim": "n/a -- calibration, not a published claim",
+      "measured": "median/min 1.20x, max/min 2.27x over 30 runs of a bit-identical 512x512 f32 matmul",
+      "verdict": "MEASURED"
+    },
+    {
+      "name": "float32 vs float64 matmul",
+      "claim": "~1.5-2x, not the 7.5x a popular microbenchmark reports (that one is dominated by writing a 400 MB smaller output matrix)",
+      "measured": "2.32x on minima, 1.90x on medians (1024x1024 GEMM, 1 thread(s))",
+      "verdict": "CONFIRMED"
+    },
+    {
+      "name": "einsum optimize=True",
+      "claim": "the default optimize=False never dispatches to BLAS -- a 30-300x loss",
+      "measured": "33.8x on minima, 37.7x on medians ('nch,co->noh', x=(32,64,100) f32, w=(64,128) f32)",
+      "verdict": "CONFIRMED"
+    },
+    {
+      "name": "NumPy per-call dispatch overhead",
+      "claim": "under 1% only above ~1e5-1e6 elements per call, not 1e4",
+      "measured": "n = 99*c0/t_e = 57,550 elements from c0=0.579 us/call and t_e=0.996 ns/elem; at n=1e4 the model says 5% overhead, measured 21% at n=8,192; first measured row under 1% at n=1,048,576",
+      "verdict": "DIFFERENT-ON-THIS-MACHINE"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install
+        # --all-groups, NOT --all-extras --dev: the latter does not install PEP 735
+        # dependency groups, so the torch oracle would be silently absent and every
+        # oracle test would skip while CI stayed green.
+        run: uv sync --all-groups
+      - name: Lint
+        run: uv run ruff check src tests phase0 examples benchmarks
+      - name: Format check
+        run: uv run ruff format --check src tests
+      - name: Test
+        run: uv run pytest tests -q -m "not slow and not network"
+      - name: Oracle tests vs PyTorch
+        run: uv run pytest tests/oracle -q -m "not network"
+
+  gradcheck-receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-groups
+      - name: The correctness receipt
+        run: uv run python phase0/gradcheck.py
+
+  package:
+    name: builds and installs as a wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build sdist and wheel
+        run: uv build --out-dir dist
+      - name: Install the wheel into a clean environment
+        run: |
+          uv venv /tmp/clean
+          VIRTUAL_ENV=/tmp/clean uv pip install dist/*.whl
+      - name: Train a model from the installed package, and prove torch is absent
+        run: |
+          /tmp/clean/bin/python -c "
+          import sys, numpy as np, scratchgrad as sg
+          from scratchgrad import nn, optim
+          m = nn.Sequential(nn.Linear(8, 16), nn.ReLU(), nn.Linear(16, 3))
+          o = optim.Adam(m.parameters(), lr=1e-2)
+          x = sg.Tensor(np.random.default_rng(0).standard_normal((5, 8)))
+          y = np.array([0, 1, 2, 0, 1])
+          first = nn.functional.cross_entropy(m(x), y).item()
+          for _ in range(50):
+              l = nn.functional.cross_entropy(m(x), y); o.zero_grad(); l.backward(); o.step()
+          assert l.item() < first / 10, (first, l.item())
+          assert 'torch' not in sys.modules
+          print(f'wheel OK: {first:.4f} -> {l.item():.4f}')
+          "

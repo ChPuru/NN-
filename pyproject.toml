@@ -1,0 +1,82 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scratchgrad"
+version = "0.1.0"
+description = "A deep-learning framework written from scratch in pure NumPy. Every gradient hand-derived."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Purunjay Choudhary" }]
+requires-python = ">=3.10"
+keywords = ["autograd", "neural-network", "from-scratch", "numpy", "deep-learning", "education"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+plots = ["matplotlib>=3.7"]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "pytest-xdist>=3.5", "ruff>=0.6", "matplotlib>=3.7"]
+# The PyTorch oracle lives in its OWN group on purpose. `uv sync --all-extras --dev` does NOT
+# install PEP 735 dependency groups, so an oracle placed in a group is silently never installed and
+# CI stays green while testing nothing. CI must use `uv sync --all-groups`.
+oracle = ["torch>=2.0"]
+
+[project.urls]
+Repository = "https://github.com/ChPuru/scratchgrad"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scratchgrad"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+  "slow: takes more than a few seconds",
+  "network: downloads a dataset",
+  "oracle: compares against PyTorch",
+]
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF", "NPY"]
+ignore = ["E741", "B008", "SIM108", "RUF005"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
+# These two deliberately touch the LEGACY global numpy RNG, which is the very
+# thing NPY002 exists to discourage. test_reproducibility perturbs it between
+# runs to prove no layer secretly reads it; test_utils covers seed_everything's
+# documented contract, which includes seeding it for third-party code.
+"tests/test_reproducibility.py" = ["E501", "NPY002"]
+"tests/test_utils.py" = ["E501", "NPY002"]
+# phase0 is a self-contained showpiece meant to be read top to bottom, so it
+# uses a flat script layout and long explanatory lines on purpose.
+"phase0/**" = ["E501"]
+# seed.py deliberately touches the LEGACY global numpy RNG: seeding it is the
+# whole point of the function, so NPY002 ("use Generator instead") is inverted
+# advice there. Everything else in the codebase uses an explicit Generator.
+"src/scratchgrad/utils/seed.py" = ["NPY002"]
+# The benchmark pins BLAS threads via environment variables, which must happen
+# before `import numpy` -- so its imports are legitimately not at the top.
+"benchmarks/**" = ["E402"]
+# Examples set sys.path before importing the package so they run without an
+# install, and print rich formatted output.
+"examples/**" = ["E402", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scratchgrad"]

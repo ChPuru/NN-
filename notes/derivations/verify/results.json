@@ -1,0 +1,1118 @@
+{
+  "seed": 0,
+  "checks": 150,
+  "failed": 0,
+  "nondeterministic": [
+    "01-backprop-basics/reverse_vs_forward_ratio"
+  ],
+  "environment": {
+    "python": "3.12.11",
+    "numpy": "2.5.3",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "files": {
+    "01-backprop-basics": {
+      "unbroadcast_adjoint": {
+        "measured": 4.176080914501978e-16,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "<v, broadcast(u)> == <unbroadcast(v), u>, 5 shape pairs",
+        "ok": true
+      },
+      "chain_dx": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "hand-composed VJP vs backward(), d/dx",
+        "ok": true
+      },
+      "chain_dW1": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "hand-composed VJP vs backward(), d/dW1",
+        "ok": true
+      },
+      "accumulate_two_uses": {
+        "measured": 3.716995543202921e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "a leaf in two branches gets 1 + 2x, not 2x",
+        "ok": true
+      },
+      "reverse_vs_forward_ratio": {
+        "measured": 60.413603287209334,
+        "bound": 10.0,
+        "kind": "above",
+        "note": "n=205 directional passes / 1 backward (0.06 ms)",
+        "ok": true,
+        "n_params": 205,
+        "backward_ms": 0.05778499908046797
+      },
+      "reverse_matches_forward": {
+        "measured": 1.182089079315798e-10,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "and the two agree, so the cheap one is not cheating",
+        "ok": true
+      }
+    },
+    "02-softmax-cross-entropy": {
+      "forward_is_logsumexp": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "loss == mean(logsumexp(z) - z_y)",
+        "ok": true
+      },
+      "dz_mean": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "framework grad == (p - onehot)/N",
+        "ok": true
+      },
+      "dz_sum": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "reduction='sum' drops the 1/N",
+        "ok": true
+      },
+      "dz_label_smoothing": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "== (p - q)/N, q smoothed",
+        "ok": true
+      },
+      "finite_differences": {
+        "measured": 2.691567811023077e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "and the closed form survives central differences",
+        "ok": true
+      },
+      "clipped_loss_capped": {
+        "measured": 27.63102111592854,
+        "bound": 27.631021115928547,
+        "kind": "close",
+        "note": "-log(p+1e-12) reports 27.6310 for a true loss of 60.0",
+        "ok": true
+      },
+      "clipped_grad_is_zero": {
+        "measured": 0.0,
+        "bound": 1e-13,
+        "kind": "below",
+        "note": "prefactor p_y/(p_y+eps) = 8.757e-15",
+        "ok": true,
+        "p_y": 8.75651076269652e-27,
+        "prefactor": 8.756510762696444e-15
+      },
+      "stable_grad_is_minus_one": {
+        "measured": 3.1741365091875196e-10,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "the stable form still says 'raise this logit', at full strength",
+        "ok": true
+      }
+    },
+    "03-layernorm": {
+      "collapse_to_three_terms": {
+        "measured": 1.1741094585563788e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dmu/dv chain == istd*(dxhat - mean - xhat*mean(dxhat*xhat))",
+        "ok": true
+      },
+      "forward_matches": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "biased var, eps inside the sqrt",
+        "ok": true
+      },
+      "dx_vs_framework": {
+        "measured": 3.074005281927127e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "three-term dx == fused backward",
+        "ok": true
+      },
+      "dg_vs_framework": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dg == sum_n dy * xhat",
+        "ok": true
+      },
+      "db_vs_framework": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "db == sum_n dy",
+        "ok": true
+      },
+      "finite_differences": {
+        "measured": 3.9315144014870634e-11,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "check_module over x, weight and bias, independent input stream",
+        "ok": true
+      },
+      "stationary_point_trap": {
+        "measured": 1.3300223710774892e-05,
+        "bound": 1e-07,
+        "kind": "above",
+        "note": "same stream for x and the cotangent: <x, norm(x)> is stationary",
+        "ok": true
+      },
+      "annotated_transformer_gap": {
+        "measured": 0.18819532522174365,
+        "bound": 0.001,
+        "kind": "above",
+        "note": "max |ours - theirs| on the same input; Bessel factor 1.0488",
+        "ok": true,
+        "bessel_factor": 1.0488088481701516
+      }
+    },
+    "04-batchnorm": {
+      "forward_uses_biased_var": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "train-mode output == (x - mu)/sqrt(var_biased + eps) * g + b",
+        "ok": true
+      },
+      "dx_vs_framework": {
+        "measured": 8.433576601632925e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "three-term dx over axes (0,2,3)",
+        "ok": true
+      },
+      "dg_vs_framework": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dg == sum over (N,H,W) of dy*xhat",
+        "ok": true
+      },
+      "db_vs_framework": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "db == sum over (N,H,W) of dy",
+        "ok": true
+      },
+      "finite_differences": {
+        "measured": 9.344358182361141e-11,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "check_module through the batch-statistics path",
+        "ok": true
+      },
+      "running_var_is_unbiased": {
+        "measured": 4.2335559496255926e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "running_var == var(x, ddof=1) after one momentum=1 step",
+        "ok": true
+      },
+      "running_var_is_not_biased": {
+        "measured": 0.06666666666665312,
+        "bound": 0.001,
+        "kind": "above",
+        "note": "and differs from the biased estimator by 14.3% at n=8",
+        "ok": true,
+        "bessel_gap_at_n8": 0.14285714285714302
+      },
+      "frozen_stats_backward_differs": {
+        "measured": 0.0973290185139102,
+        "bound": 0.01,
+        "kind": "above",
+        "note": "dxhat*istd is a different gradient; it still descends, which is the trap",
+        "ok": true
+      }
+    },
+    "05-conv2d": {
+      "output_size_formula": {
+        "measured": 0.0,
+        "bound": 0.0,
+        "kind": "close",
+        "note": "mismatches over 81 (k, stride, pad, dilation) geometries",
+        "ok": true,
+        "geometries": 81
+      },
+      "im2col_vs_naive_loops": {
+        "measured": 1.7640142491279195e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "forward-value check against six explicit loops",
+        "ok": true
+      },
+      "dW_is_dY_dot_col": {
+        "measured": 1.935111052364915e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dW = dY . col^T, reshaped",
+        "ok": true
+      },
+      "dX_is_col2im": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dX = col2im(W^T . dY)",
+        "ok": true
+      },
+      "db_sums_spatial": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "db = sum over (N, H_out, W_out)",
+        "ok": true
+      },
+      "col2im_accumulates": {
+        "measured": 7.444660270574285e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "col2im(im2col(x)) == x * count (max count 9 at k=3,s=1,p=1)",
+        "ok": true,
+        "max_window_count": 9.0
+      },
+      "overwrite_version_is_wrong": {
+        "measured": 0.7999999999999698,
+        "bound": 0.01,
+        "kind": "above",
+        "note": "fancy assignment keeps the last write; this is how far off that is",
+        "ok": true
+      },
+      "adjoint_identity": {
+        "measured": 1.47045886419572e-15,
+        "bound": 1e-12,
+        "kind": "below",
+        "note": "<v, Au> == <A^T v, u>, no step size involved",
+        "ok": true
+      },
+      "finite_differences": {
+        "measured": 5.189876201885813e-11,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "check_module on Conv2d with stride 2, pad 1, dilation 2",
+        "ok": true
+      }
+    },
+    "06-lstm": {
+      "forward_values": {
+        "measured": 4.2985432683526665e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "c' = f*c + i*g, h' = o*tanh(c')",
+        "ok": true
+      },
+      "dx": {
+        "measured": 9.201801344523261e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dz @ W_ih^T",
+        "ok": true
+      },
+      "dh_prev": {
+        "measured": 6.933743794862949e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dz @ W_hh^T",
+        "ok": true
+      },
+      "dc_prev": {
+        "measured": 1.4151121627368243e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dc * f -- the carousel, one step",
+        "ok": true
+      },
+      "dW_ih": {
+        "measured": 8.157328469270566e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "x^T dz",
+        "ok": true
+      },
+      "dW_hh": {
+        "measured": 1.0247941619613353e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "h^T dz",
+        "ok": true
+      },
+      "db": {
+        "measured": 1.5528588677321666e-16,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dz summed over the batch",
+        "ok": true
+      },
+      "carousel_is_prod_f": {
+        "measured": 6.973623173908997e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "W_hh = 0, 12 steps: dc_0 == (prod_t f_t) * dc_12",
+        "ok": true
+      },
+      "carousel_open_gate_survives": {
+        "measured": 0.7641132410155236,
+        "bound": 0.5,
+        "kind": "above",
+        "note": "b_f=5, 40 steps: |dc_0| / |dc_40| -- the gradient is still there",
+        "ok": true
+      },
+      "carousel_half_gate_vanishes": {
+        "measured": 8.936594842385914e-13,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "b_f=0, same 40 steps: 8.94e-13. The cell is not magic",
+        "ok": true
+      },
+      "tanh_rnn_vanishes": {
+        "measured": 6.374764682736897e-05,
+        "bound": 0.01,
+        "kind": "below",
+        "note": "and a tanh RNN gets 6.37e-05 with no say in the matter",
+        "ok": true
+      },
+      "truncation_is_exact": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "detach at t=4 == rebuilding the graph from a constant state",
+        "ok": true
+      },
+      "truncation_is_not_full_bptt": {
+        "measured": 0.06049537499541636,
+        "bound": 0.001,
+        "kind": "above",
+        "note": "and the discarded 4 steps were carrying real gradient",
+        "ok": true
+      },
+      "finite_differences": {
+        "measured": 9.58599539171695e-11,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "check_module through 6 unrolled steps of nn.LSTM",
+        "ok": true
+      }
+    },
+    "07-attention": {
+      "softmax_jacobian_collapse": {
+        "measured": 9.010035336457304e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dense (diag(a) - a a^T) da == a*(da - sum(da*a))",
+        "ok": true
+      },
+      "forward_value": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "out == softmax(qk^T/sqrt(d)) v",
+        "ok": true
+      },
+      "weights_match": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "returned weights == our softmax",
+        "ok": true
+      },
+      "dQ": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dS . K, with dS the collapsed softmax VJP",
+        "ok": true
+      },
+      "dK": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dS^T . Q",
+        "ok": true
+      },
+      "dV": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "A^T . dOut",
+        "ok": true
+      },
+      "dQ_causal": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "same, with the causal mask applied",
+        "ok": true
+      },
+      "dK_causal": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "and dS zeroed outside the mask",
+        "ok": true
+      },
+      "finite_differences": {
+        "measured": 8.530632173843136e-11,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "gradcheck on the fused sdpa node",
+        "ok": true
+      },
+      "dot_variance_is_d_64": {
+        "measured": 0.9984013599813607,
+        "bound": 1.05,
+        "kind": "below",
+        "note": "Var(q.k) = 63.90 at d=64 (theory: 64)",
+        "ok": true,
+        "var_raw_d64": 63.897687038807085,
+        "var_scaled_d64": 0.9984013599813607
+      },
+      "scaled_variance_is_one_64": {
+        "measured": 0.0015986400186392968,
+        "bound": 0.05,
+        "kind": "below",
+        "note": "Var(q.k/sqrt(d)) = 0.998 at d=64",
+        "ok": true
+      },
+      "scaled_variance_is_one_11": {
+        "measured": 0.005763251919407741,
+        "bound": 0.05,
+        "kind": "below",
+        "note": "and 1.006 at d=11 -- the scale is d-independent",
+        "ok": true,
+        "var_raw_d11": 11.063395771113484
+      },
+      "unscaled_softmax_saturates": {
+        "measured": 0.8506756296268954,
+        "bound": 0.8,
+        "kind": "above",
+        "note": "mean max weight 0.851 unscaled vs 0.103 scaled (d=128)",
+        "ok": true,
+        "max_weight_scaled": 0.10337721826208768
+      },
+      "unscaled_jacobian_collapses": {
+        "measured": 4.484713526226541,
+        "bound": 3.0,
+        "kind": "above",
+        "note": "mean trace(J): 0.2145 unscaled vs 0.9622 scaled",
+        "ok": true,
+        "jac_trace_raw": 0.21454727869048265,
+        "jac_trace_scaled": 0.9621830827583029
+      },
+      "neg_inf_makes_nan": {
+        "measured": 4.0,
+        "bound": 4.0,
+        "kind": "close",
+        "note": "all four entries of a fully-masked row are NaN",
+        "ok": true
+      },
+      "isfinite_guard_still_nan": {
+        "measured": 4.0,
+        "bound": 4.0,
+        "kind": "close",
+        "note": "the popular max-guard patch does not fix it: 0/0",
+        "ok": true
+      },
+      "finite_sentinel_is_uniform": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "finfo.min/2 gives a finite uniform 1/S row instead",
+        "ok": true
+      }
+    },
+    "08-adam": {
+      "m_closed_form": {
+        "measured": 7.930164461608261e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "m_t == (1 - b1^t) g over 10 steps",
+        "ok": true
+      },
+      "v_closed_form": {
+        "measured": 5.310377987684104e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "v_t == (1 - b2^t) g^2 over 10 steps",
+        "ok": true
+      },
+      "unbiased_in_expectation": {
+        "measured": 0.001010222679296291,
+        "bound": 0.005,
+        "kind": "below",
+        "note": "E[m_5]/(1 - b1^5) == E[g], 200k i.i.d. draws",
+        "ok": true
+      },
+      "framework_matches_hand": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "optim.Adam's first step == lr * m_hat/(sqrt(v_hat)+eps)",
+        "ok": true
+      },
+      "first_step_is_lr": {
+        "measured": 9.999900000945416e-06,
+        "bound": 0.0001,
+        "kind": "below",
+        "note": "|step| = lr for g in 1e-3, 1, 1e3: 0.999990, 1.000000, 1.000000",
+        "ok": true
+      },
+      "no_correction_is_3_16x": {
+        "measured": 3.0622767011045937e-07,
+        "bound": 1e-06,
+        "kind": "below",
+        "note": "measured 3.16228 vs (1-b1)/sqrt(1-b2)=3.16228; the numerator is 10x too small too",
+        "ok": true
+      },
+      "m_only_is_31_6x": {
+        "measured": 3.0622766988841477e-07,
+        "bound": 1e-06,
+        "kind": "below",
+        "note": "measured 31.6228 vs 1/sqrt(1-b2)=31.6228 -- THIS is the explosive mistake",
+        "ok": true
+      },
+      "v_only_is_0_1x": {
+        "measured": 4.440892098500626e-16,
+        "bound": 1e-06,
+        "kind": "below",
+        "note": "measured 0.100000 vs (1-b1)=0.1 -- ten times too small, and it merely stalls",
+        "ok": true
+      },
+      "eps_inside_floors_small_g": {
+        "measured": 0.09960322274001993,
+        "bound": 0.2,
+        "kind": "below",
+        "note": "at |g|=1e-5, m_hat/sqrt(v_hat+eps) steps 9.950e-05 vs 9.990e-04",
+        "ok": true,
+        "wrong_step": 9.950371902099895e-05,
+        "right_step": 0.0009990009990009992
+      },
+      "eps_inside_ok_at_large_g": {
+        "measured": 4.99999974756804e-09,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "at |g|=1 both agree to 1e-8, which is why the bug survives review",
+        "ok": true
+      }
+    },
+    "09-gradient-checking": {
+      "forward_slope_is_1": {
+        "measured": 0.0034279078504080296,
+        "bound": 0.05,
+        "kind": "below",
+        "note": "log-log slope 1.003 in the truncation regime",
+        "ok": true
+      },
+      "central_slope_is_2": {
+        "measured": 0.0002570196444899864,
+        "bound": 0.05,
+        "kind": "below",
+        "note": "log-log slope 2.000: O(h^2), the whole reason to pay 2x",
+        "ok": true
+      },
+      "forward_optimum_near_sqrt_eps": {
+        "measured": 0.07677988726351082,
+        "bound": 0.75,
+        "kind": "below",
+        "note": "best h 1.78e-08 vs sqrt(eps)=1.49e-08",
+        "ok": true
+      },
+      "central_optimum_near_cbrt_eps": {
+        "measured": 0.5321467418243264,
+        "bound": 0.75,
+        "kind": "below",
+        "note": "best h 1.78e-06 vs eps^(1/3)=6.06e-06",
+        "ok": true
+      },
+      "central_beats_forward": {
+        "measured": 1188.7969994229659,
+        "bound": 100.0,
+        "kind": "above",
+        "note": "best errors 6.86e-09 vs 5.77e-12",
+        "ok": true,
+        "fwd_best_err": 6.861795132095949e-09,
+        "cen_best_err": 5.772049505026189e-12
+      },
+      "h_1e5_is_near_optimal": {
+        "measured": 6.933487209078669,
+        "bound": 10.0,
+        "kind": "below",
+        "note": "h_rel=1e-5 costs 6.93x the best attainable error",
+        "ok": true
+      },
+      "per_element_metric_fails": {
+        "measured": 4.444829320680677e-05,
+        "bound": 1e-09,
+        "kind": "above",
+        "note": "a correct 1e-6 entry scores 4.44e-05 per-element (floor 9.8e-10)",
+        "ok": true,
+        "noise_floor": 9.769963504879796e-10
+      },
+      "array_scale_metric_passes": {
+        "measured": 7.814082714828535e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "the same numbers, normalised by the array scale",
+        "ok": true
+      },
+      "ones_cotangent_hides_transpose": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "a wrong-way backward at (7,7) passes at machine precision",
+        "ok": true
+      },
+      "random_cotangent_catches_it": {
+        "measured": 0.5933691998436631,
+        "bound": 0.1,
+        "kind": "above",
+        "note": "and fails outright once the cotangent is Gaussian",
+        "ok": true
+      },
+      "float32_has_no_power": {
+        "measured": 0.0036713710827851,
+        "bound": 0.001,
+        "kind": "above",
+        "note": "a CORRECT gradient scores 3.67e-03 in float32",
+        "ok": true
+      },
+      "float64_has_power": {
+        "measured": 4.0129478698930075e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "and 4.01e-11 in float64 -- six orders of resolution",
+        "ok": true
+      },
+      "adjoint_is_exact": {
+        "measured": 0.0,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "<v, Au> == <A^T v, u> for Linear; gradcheck manages 2.26e-11",
+        "ok": true,
+        "gradcheck_err": 2.2556235452176087e-11
+      }
+    },
+    "10-parallel-scan": {
+      "scan_vs_loop": {
+        "measured": 4.621859772395929e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "T=13, a in (-1, 1), with h0",
+        "ok": true
+      },
+      "scan_vs_loop_T4096": {
+        "measured": 8.84763633380608e-17,
+        "bound": 1e-13,
+        "kind": "below",
+        "note": "float64, a in (0.3, 0.7)",
+        "ok": true
+      },
+      "closed_form_nonfinite": {
+        "measured": 0.9701334635416666,
+        "bound": 0.9,
+        "kind": "above",
+        "note": "float32 cumprod form: first NaN at step 118 (float64: 972)",
+        "ok": true,
+        "first_bad_f32": 118,
+        "first_bad_f64": 972
+      },
+      "log_space_ok_if_positive": {
+        "measured": 1.5494098699163706e-13,
+        "bound": 1e-12,
+        "kind": "below",
+        "note": "Heinsen form, b > 0",
+        "ok": true
+      },
+      "log_space_nan_if_signed": {
+        "measured": 0.9992268880208334,
+        "bound": 0.9,
+        "kind": "above",
+        "note": "same form, signed b: fraction of NaN outputs",
+        "ok": true
+      },
+      "adjoint_is_reverse_scan": {
+        "measured": 2.902022955998725e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "hand loop vs _scan_adjoint",
+        "ok": true
+      },
+      "grads_vs_framework": {
+        "measured": 3.1251946059872674e-17,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "lam*h_prev, lam, a_1*lam_1",
+        "ok": true
+      },
+      "grads_vs_numeric": {
+        "measured": 3.944405048356266e-11,
+        "bound": 1e-08,
+        "kind": "below",
+        "note": "same formulas vs central diffs",
+        "ok": true
+      },
+      "wrong_shift_is_caught": {
+        "measured": 0.5583690330677447,
+        "bound": 0.01,
+        "kind": "above",
+        "note": "carrying lam back by a_t instead of a_{t+1}",
+        "ok": true
+      },
+      "mingru_dpre": {
+        "measured": 1.0936652157205137e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "dk = z(1-z)(lam h~ - da), dh~ = z lam",
+        "ok": true
+      },
+      "one_minus_sigmoid_17_f32": {
+        "measured": 0.0,
+        "bound": 0.0,
+        "kind": "below",
+        "note": "1 - sigmoid(17) is exactly 0 in float32; sigmoid(-17) = 4.14e-08",
+        "ok": true
+      },
+      "zoh_decay_below_1": {
+        "measured": 0.999000499833375,
+        "bound": 1.0,
+        "kind": "below",
+        "note": "exp(delta A), delta in [1e-3, 100]",
+        "ok": true
+      },
+      "zoh_decay_nonneg": {
+        "measured": 0.0,
+        "bound": 0.0,
+        "kind": "above",
+        "note": "same grid",
+        "ok": true
+      },
+      "euler_decay_unstable": {
+        "measured": 1599.0,
+        "bound": 2.0,
+        "kind": "above",
+        "note": "|1 + delta A| reaches 1599 on the same grid",
+        "ok": true
+      },
+      "bbar_error_is_half_delta_A": {
+        "measured": 0.0033250166378623325,
+        "bound": 0.01,
+        "kind": "below",
+        "note": "|B_zoh - delta B| / (delta B) == delta|A|/2 to first order",
+        "ok": true
+      },
+      "selective_scan_gradcheck": {
+        "measured": 3.577057067355933e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "x, delta, A, B, h0",
+        "ok": true
+      }
+    },
+    "11-quantization": {
+      "error_within_half_step": {
+        "measured": 0.9999968058962578,
+        "bound": 1.000000001,
+        "kind": "below",
+        "note": "max|x - x_hat| / (s/2)",
+        "ok": true
+      },
+      "error_variance_s2_over_12": {
+        "measured": 0.0012871457377765516,
+        "bound": 0.02,
+        "kind": "below",
+        "note": "var(e) / (s^2/12) = 1.0013 for a signal smooth on the grid",
+        "ok": true
+      },
+      "zero_exact_integer_zp": {
+        "measured": 0.0,
+        "bound": 0.0,
+        "kind": "below",
+        "note": "max|x_hat(0)| over 1000 ranges",
+        "ok": true
+      },
+      "zero_inexact_fractional_zp": {
+        "measured": 0.2479871307778866,
+        "bound": 0.1,
+        "kind": "above",
+        "note": "mean|x_hat(0)|/s with an unrounded z (expected ~0.25)",
+        "ok": true
+      },
+      "ste_is_surrogate_derivative": {
+        "measured": 1.6377179750498927e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "STE vs FD of clip(x)",
+        "ok": true
+      },
+      "fd_of_round_is_zero": {
+        "measured": 1.0,
+        "bound": 0.95,
+        "kind": "above",
+        "note": "fraction of FD == 0",
+        "ok": true
+      },
+      "fd_across_jump_is_s_over_2h": {
+        "measured": 0.0,
+        "bound": 1e-06,
+        "kind": "below",
+        "note": "FD straddling one jump = s/(2h), not 1",
+        "ok": true
+      },
+      "multiplier_rel_error": {
+        "measured": 4.598140490883621e-10,
+        "bound": 4.656612873077393e-10,
+        "kind": "below",
+        "note": "|M0 2^-shift - M| / M",
+        "ok": true
+      },
+      "requant_disagreement": {
+        "measured": 0.00041153846153846156,
+        "bound": 0.001,
+        "kind": "below",
+        "note": "vs floor(acc M + b + 1/2)",
+        "ok": true
+      },
+      "requant_max_code_diff": {
+        "measured": 1.0,
+        "bound": 1.0,
+        "kind": "below",
+        "note": "never more than one code",
+        "ok": true
+      },
+      "ties_round_half_up": {
+        "measured": 0.0,
+        "bound": 0.0,
+        "kind": "below",
+        "note": "+-0.5 -> 1, 0 ; +-1.5 -> 2, -1",
+        "ok": true
+      },
+      "int8_matmul_wraps": {
+        "measured": -112.0,
+        "bound": -112.0,
+        "kind": "close",
+        "note": "[100,100]@[2,2]",
+        "ok": true
+      },
+      "int32_headroom_784x255x127": {
+        "measured": 84.58043248795582,
+        "bound": 50.0,
+        "kind": "above",
+        "note": "accumulator budget of an 8-bit 784-wide layer",
+        "ok": true
+      },
+      "textbook_bias_err_over_half_M": {
+        "measured": 0.9999000199293651,
+        "bound": 0.99,
+        "kind": "above",
+        "note": "int32 bias on the acc grid: up to M/2 output codes (M ~ 11)",
+        "ok": true
+      },
+      "fixed_point_bias_err_codes": {
+        "measured": 3.7251915752932365e-09,
+        "bound": 1e-06,
+        "kind": "below",
+        "note": "int64 bias on the 2^-shift grid",
+        "ok": true
+      },
+      "binary_alpha_is_mean_abs": {
+        "measured": 0.0,
+        "bound": 1e-06,
+        "kind": "below",
+        "note": "grid argmin vs mean|w|",
+        "ok": true
+      },
+      "integer_equals_sim_codes": {
+        "measured": 1.0,
+        "bound": 0.999,
+        "kind": "above",
+        "note": "W2A2 toy MLP",
+        "ok": true
+      },
+      "integer_vs_sim_max_diff": {
+        "measured": 0.0,
+        "bound": 1.0,
+        "kind": "below",
+        "note": "in logit codes",
+        "ok": true
+      }
+    },
+    "12-parameter-shift": {
+      "single_gate_is_sinusoid": {
+        "measured": 5.551115123125783e-16,
+        "bound": 1e-13,
+        "kind": "below",
+        "note": "max residual of A + B cos t + C sin t fitted to E(t) at 40 angles",
+        "ok": true
+      },
+      "shift_rule_exact_any_s": {
+        "measured": 1.8457457784393227e-15,
+        "bound": 1e-13,
+        "kind": "below",
+        "note": "[E(t+s)-E(t-s)]/(2 sin s) vs fitted derivative, s in {0.1, 1, pi/2, 2.5}",
+        "ok": true
+      },
+      "pi2_as_central_diff_ratio": {
+        "measured": 0.0,
+        "bound": 1e-12,
+        "kind": "below",
+        "note": "same two evaluations read as FD with h=pi/2: x0.636620 (= 2/pi)",
+        "ok": true
+      },
+      "framework_vs_central_diff": {
+        "measured": 1.920660948092658e-10,
+        "bound": 1e-08,
+        "kind": "below",
+        "note": "Circuit.jacobian vs central differences (h=1e-6), shared params + x",
+        "ok": true
+      },
+      "framework_nonvacuous": {
+        "measured": 0.6856019463009517,
+        "bound": 0.1,
+        "kind": "above",
+        "note": "largest |dE/dtheta| in that check, so it cannot pass by being zero",
+        "ok": true
+      },
+      "shared_naive_is_zero": {
+        "measured": 1.6653345369377348e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "RY(t) RY(t): shifting t itself gives 0 for every t",
+        "ok": true
+      },
+      "shared_summed_exact": {
+        "measured": 4.996003610813204e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "per-occurrence sum == -2 sin 2t",
+        "ok": true
+      },
+      "full_angle_pi2_is_zero": {
+        "measured": 1.6653345369377348e-16,
+        "bound": 1e-14,
+        "kind": "below",
+        "note": "exp(-i t Y): the pi/2 rule returns exactly 0",
+        "ok": true
+      },
+      "full_angle_pi4_exact": {
+        "measured": 5.551115123125783e-16,
+        "bound": 1e-13,
+        "kind": "below",
+        "note": "exp(-i t Y): shift pi/4, factor 1 is exact",
+        "ok": true
+      },
+      "controlled_ry_two_term_fails": {
+        "measured": 0.09394179984597409,
+        "bound": 0.01,
+        "kind": "above",
+        "note": "CRY: two-term pi/2 rule vs central differences",
+        "ok": true
+      }
+    },
+    "13-vae": {
+      "reparam_dmu": {
+        "measured": 0.0,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dz/dmu == 1",
+        "ok": true
+      },
+      "reparam_dlogvar": {
+        "measured": 2.796838327282106e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "dz/dlogvar == 0.5 (z - mu)",
+        "ok": true
+      },
+      "reparam_finite_diff": {
+        "measured": 6.605659203831473e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "gradcheck with eps held fixed",
+        "ok": true
+      },
+      "kl_zero_at_prior": {
+        "measured": 0.0,
+        "bound": 0.0,
+        "kind": "close",
+        "note": "mu = 0, logvar = 0",
+        "ok": true
+      },
+      "kl_grad_derived": {
+        "measured": 8.869789381405102e-17,
+        "bound": 1e-15,
+        "kind": "below",
+        "note": "mu and 0.5 (e^lv - 1)",
+        "ok": true
+      },
+      "kl_finite_diff": {
+        "measured": 2.213201172939533e-11,
+        "bound": 1e-09,
+        "kind": "below",
+        "note": "gradcheck of the fused KL op",
+        "ok": true
+      },
+      "kl_vs_monte_carlo": {
+        "measured": 1.0493435103890525,
+        "bound": 5.0,
+        "kind": "below",
+        "note": "|closed - E_q[log q - log p]| in standard errors, 400k samples",
+        "ok": true,
+        "closed": 4.628510267643808,
+        "mc": 4.622387509135734,
+        "se": 0.005834846689816172
+      },
+      "estimators_unbiased": {
+        "measured": 1.843487460263688,
+        "bound": 5.0,
+        "kind": "below",
+        "note": "both estimators hit 2mu, in SEs",
+        "ok": true
+      },
+      "score_vs_pathwise_variance": {
+        "measured": 7.4431009222380204,
+        "bound": 5.0,
+        "kind": "above",
+        "note": "predicted 30 / 4 = 7.5",
+        "ok": true,
+        "var_path": 3.996693656012389,
+        "var_score": 29.74779423696866
+      },
+      "naive_kl_float32_garbage": {
+        "measured": 2.3191813891427566,
+        "bound": 0.1,
+        "kind": "above",
+        "note": "e^lv - 1 - lv",
+        "ok": true
+      },
+      "expm1_kl_float32": {
+        "measured": 0.0017718400035374804,
+        "bound": 0.01,
+        "kind": "below",
+        "note": "expm1(lv) - lv at lv = 1e-4",
+        "ok": true
+      },
+      "mean_reduction_is_beta_D": {
+        "measured": 784.0,
+        "bound": 784.0,
+        "kind": "close",
+        "note": "sum / mean == D",
+        "ok": true
+      },
+      "elbo_finite_diff": {
+        "measured": 3.284288067532265e-10,
+        "bound": 1e-07,
+        "kind": "below",
+        "note": "whole -ELBO, every VAE parameter",
+        "ok": true
+      }
+    }
+  }
+}

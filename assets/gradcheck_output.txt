@@ -1,0 +1,31 @@
+$ python phase0/gradcheck.py
+# 2026-09-26, Windows 11 laptop (Intel64 Family 6 Model 183), Python 3.12.11, NumPy 2.5.3, torch not installed
+
+
+per-op (tol 1e-09)
+  ------------------------------------------------------
+  dense/W                    rel_err = 6.622e-12   ok
+  dense/b                    rel_err = 1.247e-11   ok
+  dense/x                    rel_err = 1.534e-11   ok
+  relu/x                     rel_err = 1.529e-11   ok
+  cross_entropy/logits       rel_err = 1.990e-10   ok
+
+composed (tol 1e-07)
+  ------------------------------------------------------
+  composed/W1                rel_err = 5.699e-11   ok
+  composed/b1                rel_err = 4.625e-11   ok
+  composed/W2                rel_err = 3.726e-11   ok
+  composed/b2                rel_err = 4.982e-11   ok
+  composed/x                 rel_err = 4.464e-11   ok
+
+adjoint, h-free (tol 1e-12)
+  ------------------------------------------------------
+  adjoint/input              rel_err = 0.000e+00   ok
+  adjoint/weight             rel_err = 6.964e-17   ok
+
+ALL CHECKS PASSED
+float64, central differences, h = 1e-5*max(1,|x|), random cotangent.
+
+real	0m16.939s
+user	0m0.030s
+sys	0m0.000s
